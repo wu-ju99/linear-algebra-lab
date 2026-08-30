@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性代数 · 几何直觉实验室</title>
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<div id="app">
+  <!-- ===== 顶栏 ===== -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">λ</span>
+      <div>
+        <h1>线性代数 · 几何直觉实验室</h1>
+        <p>别背公式 —— 用手把矩阵"拖"出来，看清空间怎么动</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-reset-view" class="btn ghost" title="把画面恢复到初始视角">重置视角 (R)</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <!-- ===== 左侧章节导航 ===== -->
+    <nav id="sidebar">
+      <div class="sidebar-label">学习路径</div>
+      <ul id="chapter-list"></ul>
+      <div class="sidebar-tips">
+        <div class="sidebar-label">操作提示</div>
+        <ul>
+          <li>🟡 拖动 <b>金色端点</b> 改变向量 / 矩阵</li>
+          <li>拖动空白处平移视角</li>
+          <li>滚轮缩放，按 <b>R</b> 复位</li>
+          <li>右侧面板可精确输入数值</li>
+        </ul>
+      </div>
+      <div class="sidebar-foot">灵感来自 3Blue1Brown《线性代数的本质》<br>纯本地运行 · 无任何依赖</div>
+    </nav>
+
+    <!-- ===== 中间画布 ===== -->
+    <main id="stage">
+      <div id="canvas-wrap">
+        <canvas id="cv"></canvas>
+        <!-- 闯关模式的题目条 / 结算浮层由 puzzles.js 注入 -->
+        <div id="scene-tag"></div>
+      </div>
+    </main>
+
+    <!-- ===== 右侧面板 ===== -->
+    <aside id="panel"></aside>
+  </div>
+</div>
+
+<script src="js/core.js?v=13"></script>
+<script src="js/scenes1.js?v=13"></script>
+<script src="js/scenes2.js?v=13"></script>
+<script src="js/scenes3.js?v=13"></script>
+<script src="js/scenes4.js?v=13"></script>
+<script src="js/scenes5.js?v=13"></script>
+<script src="js/scenes6.js?v=13"></script>
+<script src="js/scenes7.js?v=13"></script>
+<script src="js/scenes8.js?v=13"></script>
+<script src="js/scenes9.js?v=13"></script>
+<script src="js/scenes10.js?v=13"></script>
+<script src="js/scenes11.js?v=13"></script>
+<script src="js/puzzles.js?v=13"></script>
+<script src="js/main.js?v=13"></script>
+</body>
+</html>
