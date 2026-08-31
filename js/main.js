@@ -134,6 +134,7 @@
   let drag = null;        // {drag(pWorld)} 或 null（平移模式）
   let panning = false;
   let lastSX = 0, lastSY = 0;
+  let lastDrawAt = 0;     // 上次实际绘制时刻（动画限速用）
 
   function evPos(e) {
     const r = canvas.getBoundingClientRect();
@@ -161,18 +162,19 @@
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    app.markDirty();
     const { x, y } = evPos(e);
     const sc = app.scene;
     const cam = sc._cam;
 
     if (drag) {
+      app.markDirty();
       const w = cam ? cam.toW(x, y) : null;   // 3D 场景没有 2D 相机，只传屏幕坐标
       drag.drag(w, cam, x, y);
       return;
     }
     if (panning) {
       // 3D 场景：拖动 = 旋转视角
+      app.markDirty();
       if (sc.wantsOrbit && sc.wantsOrbit()) {
         const c3 = sc.state.cam3;
         c3.yaw += (x - lastSX) * 0.008;
@@ -183,9 +185,14 @@
       lastSX = x; lastSY = y;
       return;
     }
-    // 悬停光标
+    // 悬停光标：只在悬停目标变化时才重绘
+    // （鼠标扫过无动画的空闲画面不再触发整帧重画）
     const hit = sc.hitTest ? sc.hitTest(x, y, cam) : null;
-    sc._hoverId = hit ? hit.id : null;
+    const hid = hit ? hit.id : null;
+    if (hid !== sc._hoverId) {
+      sc._hoverId = hid;
+      app.markDirty();
+    }
     canvas.classList.toggle("over-handle", !!hit);
     canvas.style.cursor = hit ? "grab" : (sc.wantsOrbit && sc.wantsOrbit() ? "move" : "crosshair");
   });
@@ -257,7 +264,11 @@
     if (document.hidden) return;
     const t = app.now();
     if (!needsRender && !isAnimating(t)) return;
+    // 动画限 30fps：脉冲/播放类动画无需全速重画，砍掉一半渲染开销；
+    // 交互（needsRender）不受限，保证拖动 1:1 跟手
+    if (!needsRender && performance.now() - lastDrawAt < 33) return;
     needsRender = false;
+    lastDrawAt = performance.now();
 
     const sc = app.scene;
     const dpr = canvas._dpr || 1;
