@@ -92,7 +92,11 @@ LA.scenes.push({
         this.refreshPanel();
       },
     });
-    if (LA.hitHandle(sx, sy, cam, S.v, 18)) return mk("v");
+    const mkVec = () => ({
+      id: "v", cursor: "grab",
+      drag: (p) => { S.v = clampCol(p); this.refreshPanel(); },
+    });
+    if (LA.hitHandle(sx, sy, cam, S.v, 18)) return mkVec();
     if (LA.hitHandle(sx, sy, cam, LA.col1(S.T1), 20)) return mk("t1a", "T1", ["a", "c"]);
     if (LA.hitHandle(sx, sy, cam, LA.col2(S.T1), 20)) return mk("t1b", "T1", ["b", "d"]);
     if (LA.hitHandle(sx, sy, cam, LA.col1(S.T2), 20)) return mk("t2a", "T2", ["a", "c"]);
