@@ -17,6 +17,8 @@
     scene: null,
     refreshPanel() { if (this.scene && this.scene.refreshPanel) this.scene.refreshPanel(); },
     updateBadges() { renderChapters(); },
+    /* 按需渲染：任何交互/状态变化后调用，下一帧才重画 */
+    markDirty() { needsRender = true; },
     toast(msg) {
       let t = document.getElementById("toast");
       if (!t) {
@@ -31,6 +33,7 @@
     },
   };
   LA.app = app;
+  let needsRender = true;
 
   /* ---------- 章节列表（按《高等代数》教材结构分组） ---------- */
   const GROUPS = [
@@ -108,19 +111,24 @@
     sc.mountPanel(panelEl, app);
     sceneTag.textContent = `${sc.name} —— ${sc.tagline}`;
     renderChapters();
+    app.markDirty();
   }
 
-  /* ---------- 画布尺寸（DPR） ---------- */
+  /* ---------- 画布尺寸（DPR，上限 2 避免 4K/高分屏像素量爆炸） ---------- */
   function resize() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = wrap.clientWidth, h = wrap.clientHeight;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     canvas._cssW = w; canvas._cssH = h; canvas._dpr = dpr;
     app.scenes.forEach((sc) => { if (sc._cam) sc._cam.setSize(w, h); });
+    app.markDirty();
   }
   new ResizeObserver(resize).observe(wrap);
   resize();
+
+  /* ---------- 面板控件（输入/开关/按钮）变化 → 触发重绘 ---------- */
+  ["input", "change", "click"].forEach((ev) => panelEl.addEventListener(ev, () => app.markDirty()));
 
   /* ---------- 指针交互 ---------- */
   let drag = null;        // {drag(pWorld)} 或 null（平移模式）
@@ -149,9 +157,11 @@
       drag = null;
       canvas.classList.add("grabbing");
     }
+    app.markDirty();
   });
 
   canvas.addEventListener("pointermove", (e) => {
+    app.markDirty();
     const { x, y } = evPos(e);
     const sc = app.scene;
     const cam = sc._cam;
@@ -185,10 +195,12 @@
     drag = null;
     panning = false;
     canvas.classList.remove("grabbing");
+    app.markDirty();
   });
 
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
+    app.markDirty();
     const { x, y } = evPos(e);
     const sc = app.scene;
     const cam = sc._cam;
@@ -214,25 +226,49 @@
     if (sc._cam) sc._cam.setSize(canvas._cssW, canvas._cssH);
     if (sc.id === "three-d") sc.state.cam3 = { yaw: 0.65, pitch: 0.42, zoom: 1 };
     if (sc.id === "cross" || sc.id === "blocks") sc.state.cam3 = new LA.Cam3();
+    app.markDirty();
   }
 
-  /* ---------- 渲染循环 ----------
-   * rAF 为主；窗口被遮挡/节流时（rAF 停摆）用 setInterval 兜底，
-   * 保证切回页面或特殊环境下画布状态与相机尺寸始终一致。 */
+  /* ---------- 渲染循环（按需渲染） ----------
+   * 空闲时零绘制：只有交互、状态变化或动画进行中才重画。
+   * rAF 为主；rAF 被节流时（窗口遮挡）由 setInterval 兜底，但同样只在
+   * 有脏标记 / 动画进行中才真正绘制 —— 后台空闲时 CPU 占用趋近于零。 */
   let lastFrameAt = 0;
+  let bgGrad = null, bgW = 0, bgH = 0;
+
+  /* 当前场景是否有随时间变化的视觉（动画/脉冲/轮播） */
+  function isAnimating(t) {
+    const sc = app.scene;
+    if (!sc || !sc.state) return false;
+    if (sc.state.playing) return true;            // 播放型动画（SVD/谱定理/eigen…）
+    if (sc.alwaysDirty) return true;              // 有持续脉冲元素的场景
+    const a = sc.state.anim;
+    if (a && a.on && a.t0 >= 0 && t - a.t0 < a.dur) return true;   // 平滑过渡中
+    if (typeof sc.state.viewT0 === "number" && sc.state.viewT0 >= 0 && t - sc.state.viewT0 < 0.7) return true; // 视角切换过渡
+    if (sc.id === "perm-det" && sc.state.autoplay) return true;   // 排列轮播
+    return false;
+  }
+
   function frame() {
     lastFrameAt = performance.now();
+    if (document.hidden) return;
     const t = app.now();
+    if (!needsRender && !isAnimating(t)) return;
+    needsRender = false;
+
     const sc = app.scene;
     const dpr = canvas._dpr || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const w = canvas._cssW, h = canvas._cssH;
 
-    // 背景
-    const g = ctx.createLinearGradient(0, 0, w, h);
-    g.addColorStop(0, "#0e131b");
-    g.addColorStop(1, "#0b0f16");
-    ctx.fillStyle = g;
+    // 背景（渐变按尺寸缓存，避免每帧新建）
+    if (bgW !== w || bgH !== h || !bgGrad) {
+      bgGrad = ctx.createLinearGradient(0, 0, w, h);
+      bgGrad.addColorStop(0, "#0e131b");
+      bgGrad.addColorStop(1, "#0b0f16");
+      bgW = w; bgH = h;
+    }
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
     if (sc) {

@@ -8,6 +8,7 @@
  * ============================================================ */
 LA.scenes.push({
   id: "image-kernel", icon: "∅", name: "值域与核：谁被送达，谁消失",
+  alwaysDirty: true,   // x 进核时的脉冲提示持续动画
   tagline: "值域 = 能到的地方；核 = 被压到 0 的所有向量",
   newCam: () => new LA.Cam2D(62),
 

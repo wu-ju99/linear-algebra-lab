@@ -364,6 +364,7 @@ LA.scenes.push({
  * ============================================================ */
 LA.scenes.push({
   id: "systems", icon: "⚖", name: "线性方程组：交点在哪",
+  alwaysDirty: true,   // 交点脉冲圈持续动画
   tagline: "Ax = b：行视图找交点，列视图找配方",
   newCam: () => new LA.Cam2D(70),
 
