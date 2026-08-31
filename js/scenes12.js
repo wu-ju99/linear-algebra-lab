@@ -379,8 +379,8 @@ LA.scenes.push({
 
   hitTest(sx, sy, cam) {
     const S = this.state;
-    const xi = this.nullDir();
-    if (!xi) return null;
+    // 注意：即使满秩（ξ 不存在），矩阵列的手柄也必须保持可拖，
+    // 否则用户一旦把 A 拖离秩 1，整个场景就锁死了
     const mk = (id) => ({
       id, cursor: "grab",
       drag: (p) => {
@@ -406,6 +406,9 @@ LA.scenes.push({
         <div class="kv"><span class="k">基础解系 ξ</span><span class="v" id="s42xi"></span></div>
         <div class="kv"><span class="k">通解（拖滑杆 t）</span><span class="v" id="s42gen"></span></div>
         <input type="range" id="s42t" min="-3" max="3" step="0.1" value="${S.t}">
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn" id="s42restore">↺ 恢复秩 1 示例</button>
+        </div>
       </div>
       <div class="panel-block">
         <div class="panel-title">说人话</div>
@@ -428,6 +431,14 @@ LA.scenes.push({
     el.querySelector("#s42t").addEventListener("input", (e) => {
       S.t = parseFloat(e.target.value);
       this.refreshPanel();
+    });
+    el.querySelector("#s42restore").addEventListener("click", () => {
+      S.A = { a: 1, b: 2, c: 2, d: 4 };
+      S.t = 1;
+      el.querySelector("#s42t").value = "1";
+      this.changed(LA.app.now());
+      this.refreshPanel();
+      LA.app.toast("已恢复秩 1 示例：解空间是一条直线");
     });
     this.refreshPanel();
   },
