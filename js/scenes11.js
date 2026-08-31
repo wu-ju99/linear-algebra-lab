@@ -28,12 +28,14 @@ function polyStr(a) {
 function polyDivRem(f, g) {
   f = polyTrim(f); g = polyTrim(g);
   let r = f.slice();
-  const dg = g.length - 1, dr0 = r.length - 1;
+  const dg = g.length - 1;
   if (dg === 0 && Math.abs(g[0]) < 1e-9) return { q: [0], r: f.slice() };
   const q = new Array(Math.max(1, r.length - dg)).fill(0);
-  while (r.length - 1 >= dg && polyTrim(r).length - 1 >= dg) {
+  let guard = 0;
+  while (guard++ < 200) {
     r = polyTrim(r);
     if (r.length - 1 < dg) break;
+    if (r.length === 1 && Math.abs(r[0]) < 1e-9) break;  // 余式为零：除法结束
     const coef = r[r.length - 1] / g[g.length - 1];
     const shift = r.length - 1 - dg;
     q[shift] += coef;
@@ -54,7 +56,11 @@ function polyGCDSteps(f, g) {
   }
   // 最后的非零余式（首一化）= 最大公因式
   let last = b;
-  for (const st of steps) if (polyDeg(st.r) >= 0) last = st.r;
+  for (const st of steps) {
+    const rt = polyTrim(st.r);
+    const isZero = rt.length === 1 && Math.abs(rt[0]) < 1e-9;
+    if (!isZero) last = rt;   // 取最后一个"非零"余式
+  }
   last = polyTrim(last);
   const lead = last[last.length - 1] || 1;
   return { steps, gcd: last.map(c => c / lead) };
