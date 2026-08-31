@@ -553,6 +553,8 @@ LA.scenes.push({
       <div class="panel-block">
         <div class="panel-title">诊断结果</div>
         <div class="kv"><span class="k">定性</span><span class="v" id="s13cls" style="font-size:12.5px; text-align:right"></span></div>
+        <div class="kv"><span class="k">顺序主子式 Δ₁, Δ₂</span><span class="v" id="s13pm"></span></div>
+        <div class="kv"><span class="k">Sylvester 判据</span><span class="v" id="s13syl" style="font-size:11.5px"></span></div>
         <div class="kv"><span class="k">特征值 λ₁, λ₂</span><span class="v" id="s13eig"></span></div>
         <div class="kv"><span class="k">q(p)（拖白点）</span><span class="v" id="s13qp"></span></div>
       </div>
@@ -619,6 +621,21 @@ LA.scenes.push({
     el.querySelector("#s13eig").textContent = !eig.real ? "—"
       : eig.allVectors ? `${LA.fmt(S.a)}（重根）`
       : `${LA.fmt(eig.l1)}, ${LA.fmt(eig.l2)}`;
+    // 顺序主子式与 Sylvester 判据
+    const d1 = S.a, d2 = S.a * S.c - S.b * S.b;
+    const pmEl = el.querySelector("#s13pm");
+    pmEl.textContent = `Δ₁ = ${LA.fmt2(d1)}，Δ₂ = ${LA.fmt2(d2)}`;
+    const syl = el.querySelector("#s13syl");
+    if (d1 > 1e-9 && d2 > 1e-9) {
+      syl.textContent = "Δ₁>0 且 Δ₂>0 ⟹ 正定 ✓";
+      syl.style.color = "#7ee787";
+    } else if (d1 < -1e-9 && d2 > 1e-9) {
+      syl.textContent = "Δ₁<0 且 Δ₂>0 ⟹ 负定 ✓";
+      syl.style.color = "#ff9ec1";
+    } else {
+      syl.textContent = "顺序主子式不全为正 → 非正定（用特征值细判）";
+      syl.style.color = "#8b98a9";
+    }
     const q = S.a * S.p.x * S.p.x + 2 * S.b * S.p.x * S.p.y + S.c * S.p.y * S.p.y;
     el.querySelector("#s13qp").textContent = LA.fmt2(q);
     const canon = el.querySelector("#s13canon");
