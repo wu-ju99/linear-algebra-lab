@@ -232,19 +232,19 @@ LA.scenes.push({
         LA.draw.label(ctx, cam, mid, `${LA.fmt(coef.y)}·v`, C.j, { fontSize: 11 });
       }
       LA.draw.arrow(ctx, cam, { x: 0, y: 0 }, S.w, C.v, { width: 3.4, head: 12 });
-      LA.draw.handle(ctx, cam, S.w, C.v, { hover: this._dragId === "w" || this._hoverId === "w" });
+      LA.draw.handle(ctx, cam, S.w, "#f0b429", { hover: this._dragId === "w" || this._hoverId === "w" });
       LA.draw.label(ctx, cam, S.w, `w = ${LA.fmt(coef.x)}·u ${coef.y >= 0 ? "+" : "−"} ${LA.fmt(Math.abs(coef.y))}·v`, C.v,
         { bold: true, fontSize: 12.5, dy: -30, dx: 8 });
     } else if (S.showW) {
       // u,v 相关时 w 的相关性自然成立
       LA.draw.arrow(ctx, cam, { x: 0, y: 0 }, S.w, C.v, { width: 3, head: 11 });
-      LA.draw.handle(ctx, cam, S.w, C.v, { hover: this._dragId === "w" || this._hoverId === "w" });
+      LA.draw.handle(ctx, cam, S.w, "#f0b429", { hover: this._dragId === "w" || this._hoverId === "w" });
       LA.draw.label(ctx, cam, S.w, "w（三个向量挤在一条线上）", C.v, { fontSize: 11.5, dy: -24 });
     } else {
-      LA.draw.handle(ctx, cam, S.w, "rgba(210,168,255,.5)", {});
+      LA.draw.handle(ctx, cam, S.w, "rgba(240,180,41,.35)", {});
     }
-    LA.draw.handle(ctx, cam, S.u, C.i, { hover: this._dragId === "u" || this._hoverId === "u" });
-    LA.draw.handle(ctx, cam, S.v, C.j, { hover: this._dragId === "v" || this._hoverId === "v" });
+    LA.draw.handle(ctx, cam, S.u, "#f0b429", { hover: this._dragId === "u" || this._hoverId === "u" });
+    LA.draw.handle(ctx, cam, S.v, "#f0b429", { hover: this._dragId === "v" || this._hoverId === "v" });
   },
 
   hitTest(sx, sy, cam) {

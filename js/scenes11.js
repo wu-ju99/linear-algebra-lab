@@ -197,12 +197,21 @@ LA.scenes.push({
     } else {
       LA.draw.handle(ctx, camC, { x: c.x, y: 0 }, "#ffd75e", { hover: this._dragId === "c" || this._hoverId === "c" });
     }
+    // 拖动导轨：实根只能沿实轴滑动
+    if (this._dragId === "r1" || this._dragId === "r2") {
+      const xr = this._dragId === "r1" ? S.r1 : S.r2;
+      LA.draw.line(ctx, camC, { x: -5, y: 0 }, { x: 5, y: 0 }, "rgba(240,180,41,.45)", { width: 3 });
+      if (this._cursorC) LA.draw.line(ctx, camC, this._cursorC, { x: xr, y: 0 }, "rgba(240,180,41,.6)", { width: 1.4, dash: [3, 3] });
+    }
+    if (this._dragId === "c") {
+      LA.draw.line(ctx, camC, { x: S.c.x, y: -5 }, { x: S.c.x, y: 5 }, "rgba(240,180,41,.45)", { width: 1.5, dash: [4, 4] });
+    }
     // 实根手柄
-    LA.draw.handle(ctx, camC, { x: S.r1, y: 0 }, "#7ee787", { hover: this._dragId === "r1" || this._hoverId === "r1" });
-    LA.draw.handle(ctx, camC, { x: S.r2, y: 0 }, "#7ee787", { hover: this._dragId === "r2" || this._hoverId === "r2" });
-    if (c.y > 1e-9) LA.draw.handle(ctx, camC, { x: c.x, y: c.y }, "#d2a8ff", { hover: this._dragId === "c" || this._hoverId === "c" });
+    LA.draw.handle(ctx, camC, { x: S.r1, y: 0 }, "#f0b429", { hover: this._dragId === "r1" || this._hoverId === "r1" });
+    LA.draw.handle(ctx, camC, { x: S.r2, y: 0 }, "#f0b429", { hover: this._dragId === "r2" || this._hoverId === "r2" });
+    if (c.y > 1e-9) LA.draw.handle(ctx, camC, { x: c.x, y: c.y }, "#f0b429", { hover: this._dragId === "c" || this._hoverId === "c" });
     ctx.restore();
-    LA.draw.label(ctx, null, { x: 0, y: 0 }, "复平面：实系数 ⟹ 复根必共轭成对（镜像）", "#8b98a9",
+    LA.draw.label(ctx, null, { x: 0, y: 0 }, "复平面：实系数 ⟹ 复根必共轭成对（镜像）；金色端点可拖", "#8b98a9",
       { screen: { x: plotW + 14, y: 14 }, fontSize: 12 });
   },
 
@@ -212,15 +221,30 @@ LA.scenes.push({
     const plotW = cv._cssW * 0.58;
     if (sx < plotW) return null; // 图像区不可拖
     const lcx = sx - plotW;
-    const near = (r, rr = 16) => Math.hypot(lcx - S.camC.toS({ x: r.x, y: r.y }).x, sy - S.camC.toS({ x: r.x, y: r.y }).y) <= rr;
-    if (near({ x: S.r1, y: 0 })) return { id: "r1", cursor: "grab", drag: (p, c2, dsx, dsy) => { S.r1 = LA.clamp(LA.snap(S.camC.toW(lcx, dsy).x), -4, 4); } };
-    if (near({ x: S.r2, y: 0 })) return { id: "r2", cursor: "grab", drag: (p, c2, dsx, dsy) => { S.r2 = LA.clamp(LA.snap(S.camC.toW(lcx, dsy).x), -4, 4); } };
+    const near = (r, rr = 18) => Math.hypot(lcx - S.camC.toS({ x: r.x, y: r.y }).x, sy - S.camC.toS({ x: r.x, y: r.y }).y) <= rr;
+    // 注意：拖动中必须用"当前"鼠标横坐标（dsx），不能用按下时捕获的 lcx，
+    // 否则实根完全不会跟随鼠标（曾因此"拖不动"）
+    if (near({ x: S.r1, y: 0 })) return {
+      id: "r1", cursor: "grab",
+      drag: (p, c2, dsx, dsy) => {
+        S.r1 = LA.clamp(LA.snap(S.camC.toW(dsx - plotW, dsy).x), -4, 4);
+        this._cursorC = S.camC.toW(dsx - plotW, dsy);
+      },
+    };
+    if (near({ x: S.r2, y: 0 })) return {
+      id: "r2", cursor: "grab",
+      drag: (p, c2, dsx, dsy) => {
+        S.r2 = LA.clamp(LA.snap(S.camC.toW(dsx - plotW, dsy).x), -4, 4);
+        this._cursorC = S.camC.toW(dsx - plotW, dsy);
+      },
+    };
     if (S.c.y > 1e-9 && near({ x: S.c.x, y: S.c.y })) return {
       id: "c", cursor: "grab",
       drag: (p, c2, dsx, dsy) => {
-        const wp = S.camC.toW(lcx, dsy);
+        const wp = S.camC.toW(dsx - plotW, dsy);
         S.c.x = LA.clamp(LA.snap(wp.x), -4, 4);
         S.c.y = Math.max(0, LA.snap(wp.y));
+        this._cursorC = null;
       },
     };
     return null;
