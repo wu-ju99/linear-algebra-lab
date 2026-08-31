@@ -44,7 +44,7 @@
     { name: "四、矩阵", ids: ["inverse", "blocks"] },
     { name: "五、二次型", ids: ["quadratic"] },
     { name: "六、线性空间", ids: ["subspaces", "span-sum", "isomorphism", "basis-change"] },
-    { name: "七、线性变换", ids: ["eigen", "trace-det", "image-kernel", "invariant", "jordan"] },
+    { name: "七、线性变换", ids: ["linear-ops", "eigen", "trace-det", "image-kernel", "invariant", "jordan"] },
     { name: "八、λ矩阵与相似", ids: ["lambda-matrix", "similarity", "relations"] },
     { name: "九、欧氏空间与酉空间", ids: ["dot", "cross", "euclid", "gram-schmidt", "orthogonal", "orthocomplement", "spectral", "unitary"] },
     { name: "十、双线性函数与辛空间", ids: ["dual", "bilinear", "symplectic"] },
