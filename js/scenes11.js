@@ -78,7 +78,7 @@ LA.scenes.push({
     r1: -1.5, r2: 1,          // 实根（只能在实轴上拖）
     c: { x: 0.5, y: 1.2 },    // 复根（共轭自动镜像）
     camC: new LA.Cam2D(56),
-    plot: { c: 0, z: 1 },     // 图像区：x 视窗中心 / 缩放
+    plot: { c: 0, z: 1, cy: 0 }, // 图像区：x 视窗中心 / 缩放 / 纵向平移偏移
   },
 
   /* 有效根列表（含共轭）与重数聚类 */
@@ -138,7 +138,8 @@ LA.scenes.push({
     const sortedY = fin.slice().sort((a, b) => a - b);
     const midY = sortedY.length ? sortedY[Math.floor(sortedY.length / 2)] : 0;
     const span = yReach * 1.35 + 0.6;
-    let YLo = midY - span, YHi = midY + span;
+    this._ySpan = span;           // 供纵向拖动换算 像素→世界坐标
+    let YLo = midY + S.plot.cy - span, YHi = midY + S.plot.cy + span;
     if (YHi - YLo > 400) { const m2 = (YHi + YLo) / 2; YLo = m2 - 200; YHi = m2 + 200; }
     const rs = this.effRoots();   // 左右两块（图像/复平面）共用
     const toPX = (x) => (x - X0) / (X1 - X0) * plotW;
@@ -188,7 +189,7 @@ LA.scenes.push({
       });
     }
     ctx.restore();
-    LA.draw.label(ctx, null, { x: 0, y: 0 }, "y = p(x)（橙）；虚线 = p′(x)。图像区：滚轮缩放，拖动平移（纵轴自适应）", "#8b98a9",
+    LA.draw.label(ctx, null, { x: 0, y: 0 }, "y = p(x)（橙）；虚线 = p′(x)。图像区：滚轮缩放，拖动平移（上下左右均可）", "#8b98a9",
       { screen: { x: 14, y: 14 }, fontSize: 12 });
     LA.draw.label(ctx, null, { x: 0, y: 0 }, `视野 x ∈ [${LA.fmt(X0)}, ${LA.fmt(X1)}]`, "#5b6675",
       { screen: { x: 14, y: h - 18 }, fontSize: 11 });
@@ -224,9 +225,11 @@ LA.scenes.push({
     if (this._dragId === "c") {
       LA.draw.line(ctx, camC, { x: S.c.x, y: -5 }, { x: S.c.x, y: 5 }, "rgba(240,180,41,.45)", { width: 1.5, dash: [4, 4] });
     }
-    // 实根手柄
+    // 实根手柄（附数值标签，r₁ 在上、r₂ 在下避免重叠）
     LA.draw.handle(ctx, camC, { x: S.r1, y: 0 }, "#f0b429", { hover: this._dragId === "r1" || this._hoverId === "r1" });
     LA.draw.handle(ctx, camC, { x: S.r2, y: 0 }, "#f0b429", { hover: this._dragId === "r2" || this._hoverId === "r2" });
+    LA.draw.label(ctx, camC, { x: S.r1, y: 0 }, `r₁ = ${LA.fmt(S.r1)}`, "#ffd75e", { fontSize: 11, dy: -18, center: true });
+    LA.draw.label(ctx, camC, { x: S.r2, y: 0 }, `r₂ = ${LA.fmt(S.r2)}`, "#ffd75e", { fontSize: 11, dy: 20, center: true });
     if (c.y > 1e-9) LA.draw.handle(ctx, camC, { x: c.x, y: c.y }, "#f0b429", { hover: this._dragId === "c" || this._hoverId === "c" });
     ctx.restore();
     LA.draw.label(ctx, null, { x: 0, y: 0 }, "复平面：实系数 ⟹ 复根必共轭成对（镜像）；金色端点可拖", "#8b98a9",
@@ -239,13 +242,15 @@ LA.scenes.push({
     const plotW = cv._cssW * 0.58;
     // 图像区：拖动 = 平移（滚轮缩放见 onWheel）
     if (sx < plotW) {
-      this._lastPX = sx;
+      this._lastPX = sx; this._lastPY = sy;   // 新一次拖动清掉上次残留，避免第一帧跳变
       return {
         id: "plot-pan", cursor: "grab",
         drag: (p, c2, dsx, dsy) => {
           const span = 9 / S.plot.z;
           S.plot.c = LA.clamp(S.plot.c - (dsx - (this._lastPX ?? dsx)) * span / plotW, -30, 30);
-          this._lastPX = dsx;
+          const ySpan = (this._ySpan ?? 1) * 2;
+          S.plot.cy = LA.clamp(S.plot.cy + (dsy - (this._lastPY ?? dsy)) * ySpan / cv._cssH, -600, 600);
+          this._lastPX = dsx; this._lastPY = dsy;
         },
       };
     }
@@ -305,6 +310,7 @@ LA.scenes.push({
         <div class="kv"><span class="k">根的分布</span><span class="v" id="s32roots" style="font-size:12px"></span></div>
         <div class="kv"><span class="k">重根（与 x 轴相切）</span><span class="v" id="s32mult"></span></div>
         <div class="kv"><span class="k">有理根检验提示</span><span class="v" id="s32rat" style="font-size:11.5px"></span></div>
+        <button class="btn" id="s32reset" style="margin-top:8px">视野复位</button>
       </div>
       <div class="panel-block">
         <div class="panel-title">说人话</div>
@@ -325,6 +331,10 @@ LA.scenes.push({
         </div>
       </div>`;
     this._panel = el;
+    el.querySelector("#s32reset").onclick = () => {
+      S.plot.c = 0; S.plot.z = 1; S.plot.cy = 0;
+      app.markDirty();
+    };
     this.refreshPanel();
   },
 
