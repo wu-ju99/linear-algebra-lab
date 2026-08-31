@@ -204,6 +204,8 @@
     const { x, y } = evPos(e);
     const sc = app.scene;
     const cam = sc._cam;
+    // 场景自定义滚轮（如多项式实验室的图像缩放）
+    if (sc.onWheel && sc.onWheel(x, y, e.deltaY)) return;
     // 3D 场景：滚轮缩放 cam3.zoom
     const c3 = sc.state && sc.state.cam3;
     if (c3 && typeof c3.zoom === "number") {

@@ -78,6 +78,7 @@ LA.scenes.push({
     r1: -1.5, r2: 1,          // 实根（只能在实轴上拖）
     c: { x: 0.5, y: 1.2 },    // 复根（共轭自动镜像）
     camC: new LA.Cam2D(56),
+    plot: { c: 0, z: 1 },     // 图像区：x 视窗中心 / 缩放
   },
 
   /* 有效根列表（含共轭）与重数聚类 */
@@ -124,28 +125,42 @@ LA.scenes.push({
     const plotW = w * 0.58, cpW = w - plotW;
     S.camC.setSize(cpW, h);
 
-    /* 左：实函数图像 y = P(x) */
+    /* 左：实函数图像 y = P(x)（Y 自适应 + 滚轮缩放 + 拖动平移） */
+    const halfX = 4.5 / S.plot.z;
+    const X0 = S.plot.c - halfX, X1 = S.plot.c + halfX;
+    const N = 300, xs = [];
+    for (let i = 0; i <= N; i++) xs.push(X0 + (i / N) * (X1 - X0));
+    // Y 范围自适应：以可见窗口内 p 值的中位为中心、92 分位绝对值定跨度
+    // （防个别爆炸点把视野撑爆，尾巴被裁剪，可用滚轮缩放细看）
+    const fin = xs.map(x => this.P(x)).filter(v => isFinite(v));
+    const sortedAbs = fin.map(Math.abs).sort((a, b) => a - b);
+    const yReach = sortedAbs.length ? sortedAbs[Math.floor(sortedAbs.length * 0.92)] : 1;
+    const sortedY = fin.slice().sort((a, b) => a - b);
+    const midY = sortedY.length ? sortedY[Math.floor(sortedY.length / 2)] : 0;
+    const span = yReach * 1.35 + 0.6;
+    let YLo = midY - span, YHi = midY + span;
+    if (YHi - YLo > 400) { const m2 = (YHi + YLo) / 2; YLo = m2 - 200; YHi = m2 + 200; }
+    const toPX = (x) => (x - X0) / (X1 - X0) * plotW;
+    const toPY = (y) => h - (y - YLo) / (YHi - YLo) * h;
+    // 网格（自适应步长）
+    const niceStep = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+    const sxStep = niceStep((X1 - X0) / 9), syStep = niceStep((YHi - YLo) / 8);
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, plotW, h); ctx.clip();
-    const X0 = -4.5, X1 = 4.5, Y0 = -6, Y1 = 6;
-    const toPX = (x) => (x - X0) / (X1 - X0) * plotW;
-    const toPY = (y) => h / 2 - (y - (Y0 + Y1) / 2) / (Y1 - Y0) * h * 0.92;
-    // 网格
     ctx.strokeStyle = "#1d2634"; ctx.lineWidth = 1;
-    for (let gx = Math.ceil(X0); gx <= X1; gx++) { ctx.beginPath(); ctx.moveTo(toPX(gx), 0); ctx.lineTo(toPX(gx), h); ctx.stroke(); }
-    for (let gy = Math.ceil(Y0); gy <= Y1; gy++) { ctx.beginPath(); ctx.moveTo(0, toPY(gy)); ctx.lineTo(plotW, toPY(gy)); ctx.stroke(); }
+    for (let gx = Math.ceil(X0 / sxStep) * sxStep; gx <= X1; gx += sxStep) { ctx.beginPath(); ctx.moveTo(toPX(gx), 0); ctx.lineTo(toPX(gx), h); ctx.stroke(); }
+    for (let gy = Math.ceil(YLo / syStep) * syStep; gy <= YHi; gy += syStep) { ctx.beginPath(); ctx.moveTo(0, toPY(gy)); ctx.lineTo(plotW, toPY(gy)); ctx.stroke(); }
     ctx.strokeStyle = "#39455a"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, toPY(0)); ctx.lineTo(plotW, toPY(0)); ctx.stroke(); // x 轴
-    ctx.beginPath(); ctx.moveTo(toPX(0), 0); ctx.lineTo(toPX(0), h); ctx.stroke();
+    if (YLo <= 0 && YHi >= 0) { ctx.beginPath(); ctx.moveTo(0, toPY(0)); ctx.lineTo(plotW, toPY(0)); ctx.stroke(); }
+    if (X0 <= 0 && X1 >= 0) { ctx.beginPath(); ctx.moveTo(toPX(0), 0); ctx.lineTo(toPX(0), h); ctx.stroke(); }
     // p(x) 曲线（裁剪在视窗内）
     ctx.strokeStyle = "#ffa657"; ctx.lineWidth = 2.6;
     ctx.beginPath();
     let pen = false;
-    for (let i = 0; i <= 300; i++) {
-      const x = X0 + (i / 300) * (X1 - X0);
-      const y = this.P(x);
-      if (y < Y0 - 2 || y > Y1 + 2) { pen = false; continue; }
-      const sx = toPX(x), sy = toPY(y);
+    for (let i = 0; i <= N; i++) {
+      const y = this.P(xs[i]);
+      if (!isFinite(y)) { pen = false; continue; }
+      const sx = toPX(xs[i]), sy = toPY(y);
       if (!pen) { ctx.moveTo(sx, sy); pen = true; } else ctx.lineTo(sx, sy);
     }
     ctx.stroke();
@@ -154,26 +169,29 @@ LA.scenes.push({
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     pen = false;
-    for (let i = 0; i <= 300; i++) {
-      const x = X0 + (i / 300) * (X1 - X0);
-      const y = this.dP(x);
-      if (y < Y0 - 2 || y > Y1 + 2) { pen = false; continue; }
-      const sx = toPX(x), sy = toPY(y);
+    for (let i = 0; i <= N; i++) {
+      const y = this.dP(xs[i]);
+      if (!isFinite(y)) { pen = false; continue; }
+      const sx = toPX(xs[i]), sy = toPY(y);
       if (!pen) { ctx.moveTo(sx, sy); pen = true; } else ctx.lineTo(sx, sy);
     }
     ctx.stroke();
     ctx.setLineDash([]);
-    // 实轴上的根（含重数）
-    const rs = this.effRoots();
-    rs.filter(r => Math.abs(r.im) < 1e-9).forEach((r) => {
-      ctx.fillStyle = r.m >= 2 ? "#ff7b72" : "#7ee787";
-      ctx.beginPath(); ctx.arc(toPX(r.re), toPY(0), 5.5, 0, Math.PI * 2); ctx.fill();
-      if (r.m >= 2) LA.draw.label(ctx, { w: plotW, h, toS: (p) => p }, { x: toPX(r.re), y: toPY(0) },
-        `${LA.fmt(r.re)}（${r.m}重根：与 x 轴相切）`, "#ff7b72", { fontSize: 11, dy: -14, center: true });
-    });
+    // 实轴上的根（含重数）：仅当 x 轴在视野内
+    if (YLo <= 0 && YHi >= 0) {
+      const rs = this.effRoots();
+      rs.filter(r => Math.abs(r.im) < 1e-9).forEach((r) => {
+        ctx.fillStyle = r.m >= 2 ? "#ff7b72" : "#7ee787";
+        ctx.beginPath(); ctx.arc(toPX(r.re), toPY(0), 5.5, 0, Math.PI * 2); ctx.fill();
+        if (r.m >= 2) LA.draw.label(ctx, { w: plotW, h, toS: (p) => p }, { x: toPX(r.re), y: toPY(0) },
+          `${LA.fmt(r.re)}（${r.m}重根：与 x 轴相切）`, "#ff7b72", { fontSize: 11, dy: -14, center: true });
+      });
+    }
     ctx.restore();
-    LA.draw.label(ctx, null, { x: 0, y: 0 }, "y = p(x)（橙）；虚线 = p′(x)：重根处两者同时为零", "#8b98a9",
+    LA.draw.label(ctx, null, { x: 0, y: 0 }, "y = p(x)（橙）；虚线 = p′(x)。图像区：滚轮缩放，拖动平移（纵轴自适应）", "#8b98a9",
       { screen: { x: 14, y: 14 }, fontSize: 12 });
+    LA.draw.label(ctx, null, { x: 0, y: 0 }, `视野 x ∈ [${LA.fmt(X0)}, ${LA.fmt(X1)}]`, "#5b6675",
+      { screen: { x: 14, y: h - 18 }, fontSize: 11 });
 
     /* 右：复平面（根的分布） */
     ctx.save();
@@ -219,7 +237,18 @@ LA.scenes.push({
     const S = this.state;
     const cv = document.getElementById("cv");
     const plotW = cv._cssW * 0.58;
-    if (sx < plotW) return null; // 图像区不可拖
+    // 图像区：拖动 = 平移（滚轮缩放见 onWheel）
+    if (sx < plotW) {
+      this._lastPX = sx;
+      return {
+        id: "plot-pan", cursor: "grab",
+        drag: (p, c2, dsx, dsy) => {
+          const span = 9 / S.plot.z;
+          S.plot.c = LA.clamp(S.plot.c - (dsx - (this._lastPX ?? dsx)) * span / plotW, -30, 30);
+          this._lastPX = dsx;
+        },
+      };
+    }
     const lcx = sx - plotW;
     const near = (r, rr = 18) => Math.hypot(lcx - S.camC.toS({ x: r.x, y: r.y }).x, sy - S.camC.toS({ x: r.x, y: r.y }).y) <= rr;
     // 注意：拖动中必须用"当前"鼠标横坐标（dsx），不能用按下时捕获的 lcx，
@@ -248,6 +277,18 @@ LA.scenes.push({
       },
     };
     return null;
+  },
+
+  /* 图像区滚轮缩放（以光标为中心；Y 始终自适应无需缩放） */
+  onWheel(x, y, deltaY) {
+    const cv = document.getElementById("cv");
+    const plotW = cv._cssW * 0.58;
+    if (x >= plotW) return false;
+    const S = this.state;
+    const wx = S.plot.c + (x / plotW - 0.5) * (9 / S.plot.z);
+    S.plot.z = LA.clamp(S.plot.z * (deltaY < 0 ? 1 / 1.15 : 1.15), 0.15, 12);
+    S.plot.c = LA.clamp(wx - (x / plotW - 0.5) * (9 / S.plot.z), -30, 30);
+    return true;
   },
 
   mountPanel(el, app) {

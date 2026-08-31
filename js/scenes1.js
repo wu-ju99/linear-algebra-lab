@@ -61,6 +61,7 @@ LA.scenes.push({
       LA.draw.arrow(ctx, cam, S.v, sum, C.w, { width: 2, dash: [6, 5], alpha: .8, noHead: true });
       LA.draw.arrow(ctx, cam, { x: 0, y: 0 }, sum, C.sum, { width: 3, label: `v+w = (${LA.fmt(sum.x)}, ${LA.fmt(sum.y)})`, head: 11 });
       LA.draw.arrow(ctx, cam, { x: 0, y: 0 }, S.w, C.w, { width: 3, label: "w", head: 11 });
+      LA.draw.handle(ctx, cam, S.w, C.w, { hover: this._dragId === "w" || this._hoverId === "w" });
     }
 
     // k·v
