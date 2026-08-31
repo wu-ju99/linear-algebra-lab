@@ -140,6 +140,7 @@ LA.scenes.push({
     const span = yReach * 1.35 + 0.6;
     let YLo = midY - span, YHi = midY + span;
     if (YHi - YLo > 400) { const m2 = (YHi + YLo) / 2; YLo = m2 - 200; YHi = m2 + 200; }
+    const rs = this.effRoots();   // 左右两块（图像/复平面）共用
     const toPX = (x) => (x - X0) / (X1 - X0) * plotW;
     const toPY = (y) => h - (y - YLo) / (YHi - YLo) * h;
     // 网格（自适应步长）
@@ -179,7 +180,6 @@ LA.scenes.push({
     ctx.setLineDash([]);
     // 实轴上的根（含重数）：仅当 x 轴在视野内
     if (YLo <= 0 && YHi >= 0) {
-      const rs = this.effRoots();
       rs.filter(r => Math.abs(r.im) < 1e-9).forEach((r) => {
         ctx.fillStyle = r.m >= 2 ? "#ff7b72" : "#7ee787";
         ctx.beginPath(); ctx.arc(toPX(r.re), toPY(0), 5.5, 0, Math.PI * 2); ctx.fill();

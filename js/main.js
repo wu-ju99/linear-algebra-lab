@@ -274,12 +274,17 @@
     ctx.fillRect(0, 0, w, h);
 
     if (sc) {
-      if (!sc._cam) {
-        // 3D 场景（three-d / cross）：自己管理相机，只需画布尺寸
-        sc.draw(ctx, { w, h }, app, t);
-      } else {
-        sc._cam.setSize(w, h);
-        sc.draw(ctx, sc._cam, app, t);
+      try {
+        if (!sc._cam) {
+          // 3D 场景（three-d / cross）：自己管理相机，只需画布尺寸
+          sc.draw(ctx, { w, h }, app, t);
+        } else {
+          sc._cam.setSize(w, h);
+          sc.draw(ctx, sc._cam, app, t);
+        }
+      } catch (e) {
+        // 单个场景的绘制异常不应杀死渲染循环（否则画布永久冻结）
+        console.error("场景绘制异常：", e);
       }
     }
   }
