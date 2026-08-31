@@ -138,9 +138,11 @@ LA.scenes.push({
     const sortedY = fin.slice().sort((a, b) => a - b);
     const midY = sortedY.length ? sortedY[Math.floor(sortedY.length / 2)] : 0;
     const span = yReach * 1.35 + 0.6;
-    this._ySpan = span;           // 供纵向拖动换算 像素→世界坐标
     let YLo = midY + S.plot.cy - span, YHi = midY + S.plot.cy + span;
     if (YHi - YLo > 400) { const m2 = (YHi + YLo) / 2; YLo = m2 - 200; YHi = m2 + 200; }
+    // 供纵向拖动换算 像素→世界坐标；必须用限幅后的最终视野，
+    // 否则缩小后（跨度被钳到 ±200）拖动会按未限幅的巨大跨度换算，视野"飞走"看起来像没动
+    this._ySpan = (YHi - YLo) / 2;
     const rs = this.effRoots();   // 左右两块（图像/复平面）共用
     const toPX = (x) => (x - X0) / (X1 - X0) * plotW;
     const toPY = (y) => h - (y - YLo) / (YHi - YLo) * h;
@@ -284,16 +286,21 @@ LA.scenes.push({
     return null;
   },
 
-  /* 图像区滚轮缩放（以光标为中心；Y 始终自适应无需缩放） */
+  /* 图像区滚轮缩放（以光标为中心；向上滚 = 放大；Y 始终自适应无需缩放） */
   onWheel(x, y, deltaY) {
     const cv = document.getElementById("cv");
     const plotW = cv._cssW * 0.58;
     if (x >= plotW) return false;
     const S = this.state;
     const wx = S.plot.c + (x / plotW - 0.5) * (9 / S.plot.z);
-    S.plot.z = LA.clamp(S.plot.z * (deltaY < 0 ? 1 / 1.15 : 1.15), 0.15, 12);
+    S.plot.z = LA.clamp(S.plot.z * (deltaY < 0 ? 1.15 : 1 / 1.15), 0.15, 12);
     S.plot.c = LA.clamp(wx - (x / plotW - 0.5) * (9 / S.plot.z), -30, 30);
     return true;
+  },
+
+  /* 右上角"重置视角"按钮 / R 键 */
+  resetView() {
+    this.state.plot = { c: 0, z: 1, cy: 0 };
   },
 
   mountPanel(el, app) {
@@ -332,7 +339,7 @@ LA.scenes.push({
       </div>`;
     this._panel = el;
     el.querySelector("#s32reset").onclick = () => {
-      S.plot.c = 0; S.plot.z = 1; S.plot.cy = 0;
+      this.resetView();
       app.markDirty();
     };
     this.refreshPanel();

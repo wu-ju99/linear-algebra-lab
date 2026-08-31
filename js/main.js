@@ -224,6 +224,7 @@
   document.getElementById("btn-reset-view").addEventListener("click", resetView);
   function resetView() {
     const sc = app.scene;
+    if (sc.resetView) { sc.resetView(); app.markDirty(); return; }  // 场景自定义复位（如多项式实验室的 plot 视野）
     sc._cam = sc.newCam();
     if (sc._cam) sc._cam.setSize(canvas._cssW, canvas._cssH);
     if (sc.id === "three-d") sc.state.cam3 = { yaw: 0.65, pitch: 0.42, zoom: 1 };
